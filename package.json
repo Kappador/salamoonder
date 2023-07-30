@@ -1,0 +1,24 @@
+{
+  "name": "salamoonder",
+  "version": "1.1.0",
+  "description": "API Wrapper for salamoonder.com",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kappador/salamoonder-api.git"
+  },
+  "author": "Kappador (kappador@kappa.host)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Kappador/salamoonder-api/issues"
+  },
+  "homepage": "https://github.com/Kappador/salamoonder-api#readme",
+  "dependencies": {
+    "needle": "^3.2.0"
+  },
+  "devDependencies": {
+    "@types/needle": "^3.2.0"
+  }
+}
