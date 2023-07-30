@@ -16,7 +16,8 @@
   },
   "homepage": "https://github.com/Kappador/salamoonder-api#readme",
   "dependencies": {
-    "needle": "^3.2.0"
+    "needle": "^3.2.0",
+    "tls-client": "^0.0.5"
   },
   "devDependencies": {
     "@types/needle": "^3.2.0"

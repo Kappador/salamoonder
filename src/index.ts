@@ -189,7 +189,7 @@ export default class Wrapper {
             Accept: "*/*",
             "Accept-Encoding": "gzip, deflate, br",
             "Accept-Language": "en-US,en;q=0.9",
-            Authorization: `OAuth ${oauth}`,
+            Authorization: oauth ? `OAuth ${oauth}` : "",
             "Cache-Control": "no-cache",
             "Client-Id": clientId,
             "Client-Request-Id": requestId,
