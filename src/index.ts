@@ -13,20 +13,31 @@ function genString(length: number): string {
   return result;
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type Request = {
   url: string;
-  apiKey: string;
+  apiKey?: boolean;
   body?: any;
 };
 
 export type Response = {
   status: number;
-  data: Solution | Boolean | Error;
+  data: Task | Solution | Boolean | Error;
 };
 
 export type Balance = {
   balance: number;
   currency: string;
+};
+
+export type Task = {
+  error_code: number;
+  error_description: string;
+  taskId: string;
+  status: string;
 };
 
 export type Solution = {
@@ -59,13 +70,22 @@ export default class Wrapper {
   callApi(request: Request): Promise<NeedleResponse | Error> {
     return new Promise(async (resolve, reject) => {
       try {
+
+        let body = {
+          ...request.body,
+        }
+
+        if (typeof request.apiKey === "undefined") {
+          body = {
+            api_key: this.key,
+            ...request.body,
+          }
+        } 
+
         const response = await needle(
           "post",
           request.url,
-          {
-            api_key: request.apiKey,
-            ...request.body,
-          },
+          body,
           { json: true }
         );
         switch (response.statusCode) {
@@ -96,7 +116,6 @@ export default class Wrapper {
       try {
         const response = await this.callApi({
           url: `${this.url}/twitch/validate_integrity`,
-          apiKey: this.key,
           body: {
             token: token,
           },
@@ -127,28 +146,100 @@ export default class Wrapper {
     });
   }
 
-  solveIntegrity(): Promise<Response> {
+  solveIntegrity(): Promise<Solution | Error> {
+    return new Promise(async (resolve, reject) => {
+
+      const task = await this.createTask();
+
+      const result = await this.getTaskResult((task.data as Task).taskId);
+
+      if (result instanceof Error) {
+        return reject(result);
+      }
+      console.log(result)
+      resolve(result.data as Solution);
+    });
+  }
+
+  createTask(): Promise<Response> {
     return new Promise(async (resolve, reject) => {
       try {
         const response = await this.callApi({
-          url: `${this.url}/kasada/solver`,
-          apiKey: this.key,
+          url: `${this.url}/createTask`,
+          body: {
+            task: {
+              type: "KasadaCaptchaSolver",
+            },
+          },
         });
-        console.log("weird");
+
         if (response instanceof Error) {
           return reject(response);
         }
 
-        if (response.body.error) {
-          return reject(new Error(response.body.error));
+        if (response.body.error_code !== 0) {
+          return reject(new Error(response.body.error_description));
+        }
+
+        resolve({
+          status: 200,
+          data: {
+            ...response.body,
+            status: "PENDING",
+          } as Task,
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  getTaskResult(
+    taskId: string,
+    options?: {
+      maxRetries?: number;
+      retryDelay?: number;
+    }
+  ): Promise<Response> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        let response: any;
+        let status = "PENDING";
+        let retries = 0;
+
+        while (status === "PENDING") {
+          response = await this.callApi({
+            url: `${this.url}/getTaskResult`,
+            apiKey: false,
+            body: {
+              taskId: taskId,
+            },
+          });
+
+          if (response instanceof Error) {
+            return reject(response);
+          }
+
+          if (response.body.errorId !== 0) {
+            return reject(new Error(response.body.message));
+          }
+
+          status = response.body.status;
+
+          await wait(options?.retryDelay ?? 1000);
+          retries++;
+
+          if (options?.maxRetries && retries > options.maxRetries) {
+            return reject(new Error("Max retries exceeded"));
+          }
         }
 
         const solution: Solution = {
-          cd: response.body["x-kpsdk-cd"],
-          st: response.body["x-kpsdk-st"],
-          ct: response.body["x-kpsdk-ct"],
-          cr: response.body["x-kpsdk-cr"],
-          user_agent: response.body["user-agent"],
+          cd: response.body.solution["x-kpsdk-cd"],
+          st: response.body.solution["x-kpsdk-st"],
+          ct: response.body.solution["x-kpsdk-ct"],
+          cr: response.body.solution["x-kpsdk-cr"],
+          user_agent: response.body.solution["user-agent"],
         };
 
         resolve({
@@ -172,9 +263,7 @@ export default class Wrapper {
       const solved = await this.solveIntegrity();
 
       if (
-        solved instanceof Error ||
-        solved.data instanceof Boolean ||
-        solved.data instanceof Error
+        solved instanceof Error
       ) {
         return reject(solved);
       }
@@ -201,14 +290,14 @@ export default class Wrapper {
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-site",
             "Sec-GPC": "1",
-            "User-Agent": solved.data.user_agent,
+            "User-Agent": solved.user_agent,
             "X-Device-Id": deviceId,
             "sec-ch-ua":
               '"Not/A)Brand";v="99", "Brave";v="115", "Chromium";v="115"',
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": '"Windows"',
-            "x-kpsdk-cd": solved.data.cd,
-            "x-kpsdk-ct": solved.data.ct,
+            "x-kpsdk-cd": solved.cd,
+            "x-kpsdk-ct": solved.ct,
             "x-kpsdk-v": "j-0.0.0",
           },
         }
@@ -229,7 +318,7 @@ export default class Wrapper {
         sessionId: sessionId,
         deviceId: deviceId,
 
-        userAgent: solved.data.user_agent,
+        userAgent: "solved.data.user_agent",
         clientId: clientId,
         oauth: oauth,
 
@@ -242,6 +331,8 @@ export default class Wrapper {
 
   getBalance(): Promise<Balance | Error> {
     return new Promise(async (resolve, reject) => {
+      return reject(new Error("Unsupported Endpoint"));
+
       try {
         const response = await needle(
           "post",
@@ -251,7 +342,6 @@ export default class Wrapper {
           },
           { json: true }
         );
-
         const chars = response.body.balance.split("");
         let balance = "";
         let currency = "";
