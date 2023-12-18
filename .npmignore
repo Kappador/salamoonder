@@ -1,4 +1,5 @@
 src
 tsconfig.json
 /lib/test.js
+/lib/test.d.ts
 update.sh

@@ -156,7 +156,6 @@ export default class Wrapper {
       if (result instanceof Error) {
         return reject(result);
       }
-      console.log(result)
       resolve(result.data as Solution);
     });
   }
@@ -215,7 +214,6 @@ export default class Wrapper {
               taskId: taskId,
             },
           });
-
           if (response instanceof Error) {
             return reject(response);
           }
@@ -318,7 +316,7 @@ export default class Wrapper {
         sessionId: sessionId,
         deviceId: deviceId,
 
-        userAgent: "solved.data.user_agent",
+        userAgent: solved.user_agent,
         clientId: clientId,
         oauth: oauth,
 
