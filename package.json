@@ -1,6 +1,6 @@
 {
   "name": "salamoonder",
-  "version": "1.2.0",
+  "version": "2.3.0",
   "description": "API Wrapper for salamoonder.com",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -16,6 +16,7 @@
   },
   "homepage": "https://github.com/Kappador/salamoonder-api#readme",
   "dependencies": {
+    "kappa-helper": "^1.0.1",
     "needle": "^3.2.0",
     "tls-client": "^0.0.5"
   },
