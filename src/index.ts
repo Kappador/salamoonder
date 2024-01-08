@@ -1,12 +1,19 @@
 import needle from "needle";
-import {
-  TaskPjsFile,
-  TaskStatus,
-  TaskType,
-  TwitchIntegrity,
-  getTaskResult,
-} from "./types";
 import { randomString, wait } from "kappa-helper";
+import {
+  CreateTaskResponse,
+  GetTaskResponse,
+  PjsFile,
+  Task,
+  TaskType,
+  KasadaCaptchaSolverSolution,
+  ExtendedCreateTaskResponse,
+  TwitchScraperSolution,
+  TwitchCheckIntegritySolution,
+  TwitchRegisterAccountSolution,
+  Solution,
+  TwitchIntegrity,
+} from "./types";
 
 export default class Salamoonder {
   private apiKey: string;
@@ -17,178 +24,184 @@ export default class Salamoonder {
     this.apiKey = apiKey;
   }
 
-  //#region Salamoonder Api
-  public async getBalance(): Promise<number> {
-    return new Promise(async (resolve, reject) => {
-      // endpoint disabled
-      return resolve(0);
-
-      try {
-        const response = await needle(
-          "post",
-          `${this.salamoonderUrl}/getBalance`,
-          {
-            api_key: this.apiKey,
-          }
-        );
-        console.log(response.body);
-        resolve(response.body.balance);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  public async solveCaptcha(site: TaskPjsFile): Promise<getTaskResult> {
-    return new Promise(async (resolve, reject) => {
+  private createTask(task: Task): Promise<CreateTaskResponse> {
+    return new Promise<CreateTaskResponse>(async (resolve, reject) => {
       try {
         const response = await needle(
           "post",
           `${this.salamoonderUrl}/createTask`,
           {
             api_key: this.apiKey,
-            task: {
-              type: TaskType.KASADA_CAPTCHA_SOLVER,
-              pjs: site,
-            },
+            task,
           },
           {
             json: true,
           }
         );
-
-        const taskId = response.body.taskId;
-
-        if (response.body.error_code !== 0) {
-          return reject(response.body.error_description);
-        }
-
-        let task = await this.getTask(taskId);
-
-        while (task.status == TaskStatus.PENDING) {
-          await wait(1000);
-
-          task = await this.getTask(taskId);
-        }
-
-        if (task.solution) task.solution.type = "KasadaCaptchaSolver";
-
-        resolve(task);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  public async registerTwitchAccount(email: string): Promise<getTaskResult> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await needle(
-          "post",
-          `${this.salamoonderUrl}/createTask`,
-          {
-            api_key: this.apiKey,
-            task: {
-              type: TaskType.TWITCH_REGISTER_ACCOUNT,
-              email: email,
-            },
-          },
-          {
-            json: true,
-          }
-        );
-
-        const taskId = response.body.taskId;
-
-        if (response.body.error_code !== 0) {
-          return reject(response.body.error_description);
-        }
-
-        let task = await this.getTask(taskId);
-
-        while (task.status == TaskStatus.PENDING) {
-          await wait(1000);
-
-          task = await this.getTask(taskId);
-        }
-
-        if (task.solution) task.solution.type = "TwitchRegisterAccount";
-
-        resolve(task);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  public async checkTwitchIntegrity(token: string): Promise<getTaskResult> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await needle(
-          "post",
-          `${this.salamoonderUrl}/createTask`,
-          {
-            api_key: this.apiKey,
-            task: {
-              type: TaskType.TWITCH_CHECK_INTEGRITY,
-              token: token,
-            },
-          },
-          {
-            json: true,
-          }
-        );
-
-        const taskId = response.body.taskId;
-
-        if (response.body.error_code !== 0) {
-          return reject(response.body.error_description);
-        }
-
-        let task = await this.getTask(taskId);
-
-        while (task.status == TaskStatus.PENDING) {
-          await wait(1000);
-
-          task = await this.getTask(taskId);
-        }
-
-        if (task.solution) task.solution.type = "TwitchCheckIntegrity";
-
-        resolve(task);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  public async getTask(taskId: string): Promise<getTaskResult> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await needle(
-          "post",
-          `${this.salamoonderUrl}/getTaskResult`,
-          {
-            taskId: taskId,
-          },
-          {
-            json: true,
-          }
-        );
-        if (response.body.errorId && response.body.errorId !== 0) {
-          return reject(response.body.message ?? "Unknown error");
-        }
-
         resolve(response.body);
       } catch (error) {
         reject(error);
       }
     });
   }
-  //#endregion
 
-  //#region Twitch Api
+  private getTaskResult(taskId: string): Promise<GetTaskResponse> {
+    return new Promise<GetTaskResponse>(async (resolve, reject) => {
+      try {
+        const response = await needle(
+          "post",
+          `${this.salamoonderUrl}/getTaskResult`,
+          {
+            api_key: this.apiKey,
+            taskId,
+          },
+          {
+            json: true,
+          }
+        );
+        resolve(response.body);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 
+  private getTaskResultFinal(taskId: string): Promise<GetTaskResponse> {
+    return new Promise<GetTaskResponse>(async (resolve, reject) => {
+      let retries = 0;
+
+      let response = await this.getTaskResult(taskId);
+      while (response.status != "ready") {
+        if (retries > 5) {
+          return reject("Too many retries");
+        }
+
+        await wait(1000);
+        response = await this.getTaskResult(taskId);
+
+        retries++;
+      }
+      resolve(response);
+    });
+  }
+
+  private getSolution(task: Task): Promise<Solution> {
+    return new Promise<Solution>(async (resolve, reject) => {
+      const response = await this.createTask(task);
+
+      if (response.error_code !== 0) {
+        return reject(response.error_description);
+      }
+
+      const result = await this.getTaskResultFinal(response.taskId);
+
+      if (result.errorId != 0) {
+        return reject(result.solution);
+      }
+
+      if (result.solution.type == "Error") {
+        return reject(result.solution);
+      }
+
+      resolve(result.solution);
+    });
+  }
+
+  public getBalance(): Promise<number> {
+    return new Promise<number>(async (resolve, reject) => {
+      try {
+        const response = (await this.createTask({
+          type: TaskType.GET_BALANCE,
+        })) as ExtendedCreateTaskResponse;
+        resolve(parseFloat(response.wallet));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  public solveCaptcha(
+    pjs: PjsFile,
+    url?: string
+  ): Promise<KasadaCaptchaSolverSolution> {
+    return new Promise<KasadaCaptchaSolverSolution>(async (resolve, reject) => {
+      let file = pjs.toString();
+      if (pjs === PjsFile.CUSTOM && url) {
+        file = url;
+      }
+
+      const task: Task = {
+        type: TaskType.KASADA_CAPTCHA_SOLVER,
+        pjs: file,
+      };
+
+      const response = await this.getSolution(task);
+
+      response.type = "KasadaCaptchaSolver";
+      if (response.type != "KasadaCaptchaSolver") {
+        return reject("Wrong solution type");
+      }
+
+      resolve(response);
+    });
+  }
+
+  public scrapeTwitch(): Promise<TwitchScraperSolution> {
+    return new Promise<TwitchScraperSolution>(async (resolve, reject) => {
+      const task: Task = {
+        type: TaskType.TWITCH_SCRAPER,
+      };
+
+      const response = await this.createTask(task);
+
+      if (response.error_code !== 0) {
+        return reject(response.error_description);
+      }
+
+      const result = await this.getTaskResultFinal(response.taskId);
+
+      if (result.errorId != 0) {
+        return reject(result.solution);
+      }
+
+      if (result.solution.type == "Error") {
+        return reject(result.solution);
+      }
+
+      result.solution.type = "Twitch_Scraper";
+
+      if (result.solution.type != "Twitch_Scraper") {
+        return reject("Wrong solution type");
+      }
+
+      resolve(result.solution);
+    });
+  }
+
+  public checkTwitchIntegrity(
+    token: string
+  ): Promise<TwitchCheckIntegritySolution> {
+    return new Promise<TwitchCheckIntegritySolution>(
+      async (resolve, reject) => {
+        const task: Task = {
+          type: TaskType.TWITCH_CHECKINTEGRITY,
+          token,
+        };
+
+        const result = await this.getSolution(task);
+
+        result.type = "Twitch_CheckIntegrity";
+
+        if (result.type != "Twitch_CheckIntegrity") {
+          return reject("Wrong solution type");
+        }
+
+        resolve(result);
+      }
+    );
+  }
+
+  // implement integrity generation via salamoonder
   public async generateIntegrity(
     oauth: string = "",
     clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
@@ -198,23 +211,8 @@ export default class Salamoonder {
   ): Promise<TwitchIntegrity> {
     return new Promise(async (resolve, reject) => {
       try {
-        const solved = await this.solveCaptcha(TaskPjsFile.TWITCH);
 
-        if (solved instanceof Error) {
-          return reject(solved);
-        }
-
-        if (solved.errorId !== 0) {
-          return reject(new Error(solved.message));
-        }
-
-        if (!solved.solution) {
-          return reject(new Error("No solution"));
-        }
-
-        if (solved.solution.type !== "KasadaCaptchaSolver") {
-          return reject(new Error("Invalid solution type"));
-        }
+        const solved = await this.solveCaptcha(PjsFile.TWITCH);
 
         const response = await needle(
           "post",
@@ -238,14 +236,14 @@ export default class Salamoonder {
               "Sec-Fetch-Mode": "cors",
               "Sec-Fetch-Site": "same-site",
               "Sec-GPC": "1",
-              "User-Agent": solved.solution["user-agent"],
+              "User-Agent": solved["user-agent"],
               "X-Device-Id": deviceId,
               "sec-ch-ua":
                 '"Not/A)Brand";v="99", "Brave";v="115", "Chromium";v="115"',
               "sec-ch-ua-mobile": "?0",
               "sec-ch-ua-platform": '"Windows"',
-              "x-kpsdk-cd": solved.solution["x-kpsdk-cd"],
-              "x-kpsdk-ct": solved.solution["x-kpsdk-ct"],
+              "x-kpsdk-cd": solved["x-kpsdk-cd"],
+              "x-kpsdk-ct": solved["x-kpsdk-ct"],
               "x-kpsdk-v": "j-0.0.0",
             },
           }
@@ -259,7 +257,7 @@ export default class Salamoonder {
           clientId: clientId,
           token: response.body.token,
           sessionId: sessionId,
-          userAgent: solved.solution["user-agent"],
+          userAgent: solved["user-agent"],
           deviceId: deviceId,
           oauth: oauth,
         };
@@ -271,5 +269,26 @@ export default class Salamoonder {
     });
   }
 
-  //#endregion
+  public registerTwitchAccount(
+    email: string
+  ): Promise<TwitchRegisterAccountSolution> {
+    return new Promise<TwitchRegisterAccountSolution>(
+      async (resolve, reject) => {
+        const task: Task = {
+          type: TaskType.TWITCH_REGISTERACCOUNT,
+          email,
+        };
+
+        const result = await this.getSolution(task);
+
+        result.type = "Twitch_RegisterAccount";
+
+        if (result.type != "Twitch_RegisterAccount") {
+          return reject("Wrong solution type");
+        }
+
+        resolve(result);
+      }
+    );
+  }
 }
