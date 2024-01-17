@@ -15,6 +15,15 @@ try {
 }
 ```
 
+### Disclaimer
+
+By default you are supporting me through the usage of my app id. This can be disabled by simply adding `false` as a second parameter when initiating the salamoonder class.
+
+```js
+const api = new Salamoonder(process.env.SALAMOONDER_API_KEY, false);
+```
+
+
 ## API Calls
 
 ### getBalance()
