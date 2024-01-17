@@ -13,27 +13,44 @@ import {
   TwitchRegisterAccountSolution,
   Solution,
   TwitchIntegrity,
+  IntegrityGenerateType,
+  IntegrityLocal,
+  IntegrityPublic,
+  IntegritySelf,
 } from "./types";
 
 export default class Salamoonder {
   private apiKey: string;
   private salamoonderUrl: string = "https://salamoonder.com/api";
   private twitchUrl: string = "https://gql.twitch.tv";
+  private support: boolean = false;
+  private appId: string = "appsr-kappador-c209-deda-055d-49b7a498";
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, support: boolean = true) {
     this.apiKey = apiKey;
+    this.support = support;
   }
 
   private createTask(task: Task): Promise<CreateTaskResponse> {
     return new Promise<CreateTaskResponse>(async (resolve, reject) => {
       try {
+        const body: {
+          api_key: string;
+          task: Task;
+          app_id?: string;
+        } = {
+          api_key: this.apiKey,
+          task,
+        };
+
+        if (this.support) {
+          body["app_id"] = this.appId;
+        }
+
         const response = await needle(
           "post",
           `${this.salamoonderUrl}/createTask`,
-          {
-            api_key: this.apiKey,
-            task,
-          },
+          body,
           {
             json: true,
           }
@@ -107,6 +124,11 @@ export default class Salamoonder {
     });
   }
 
+  private checkProxy(proxy: string): boolean {
+    const regex = /[A-Za-z0-9]+:[A-Za-z0-9]+@[A-Za-z0-9.]+:[0-9]+/i;
+    return regex.test(proxy);
+  }
+
   public getBalance(): Promise<number> {
     return new Promise<number>(async (resolve, reject) => {
       try {
@@ -137,8 +159,8 @@ export default class Salamoonder {
 
       const response = await this.getSolution(task);
 
-      response.type = "KasadaCaptchaSolver";
-      if (response.type != "KasadaCaptchaSolver") {
+      response.type = TaskType.KASADA_CAPTCHA_SOLVER;
+      if (response.type != TaskType.KASADA_CAPTCHA_SOLVER) {
         return reject("Wrong solution type");
       }
 
@@ -168,9 +190,9 @@ export default class Salamoonder {
         return reject(result.solution);
       }
 
-      result.solution.type = "Twitch_Scraper";
+      result.solution.type = TaskType.TWITCH_SCRAPER;
 
-      if (result.solution.type != "Twitch_Scraper") {
+      if (result.solution.type != TaskType.TWITCH_SCRAPER) {
         return reject("Wrong solution type");
       }
 
@@ -190,9 +212,9 @@ export default class Salamoonder {
 
         const result = await this.getSolution(task);
 
-        result.type = "Twitch_CheckIntegrity";
+        result.type = TaskType.TWITCH_CHECKINTEGRITY;
 
-        if (result.type != "Twitch_CheckIntegrity") {
+        if (result.type != TaskType.TWITCH_CHECKINTEGRITY) {
           return reject("Wrong solution type");
         }
 
@@ -201,18 +223,53 @@ export default class Salamoonder {
     );
   }
 
-  // implement integrity generation via salamoonder
-  public async generateIntegrity(
+  public generateIntegrity(
+    type: IntegrityGenerateType,
+    data: IntegrityPublic | IntegrityLocal | IntegritySelf
+  ): Promise<TwitchIntegrity> {
+    if (data.proxy && !this.checkProxy(data.proxy)) {
+      return Promise.reject("Invalid proxy | Use user:pass@ip:port");
+    }
+
+    switch (type) {
+      case IntegrityGenerateType.API_PUBLIC:
+        let pub = data as IntegrityPublic;
+        return this.generatePublicIntegrity(
+          pub.proxy,
+          pub.access_token,
+          pub.deviceId ?? randomString(16).toString(),
+          pub.clientId
+        );
+      case IntegrityGenerateType.API_LOCAL:
+        let loc = data as IntegrityLocal;
+        return this.generateLocalIntegrity(
+          loc.proxy,
+          loc.deviceId ?? randomString(16).toString(),
+          loc.clientId
+        );
+      case IntegrityGenerateType.SELF:
+        let self = data as IntegritySelf;
+        return this.generateSelfIntegrity(
+          self.proxy,
+          self.access_token,
+          self.deviceId,
+          self.clientId
+        );
+    }
+  }
+
+  private generateSelfIntegrity(
+    proxy: string = "",
     oauth: string = "",
-    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
     deviceId: string = randomString(32).toString(),
-    sessionId: string = randomString(16).toString(),
-    requestId: string = randomString(32).toString()
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
   ): Promise<TwitchIntegrity> {
     return new Promise(async (resolve, reject) => {
       try {
-
         const solved = await this.solveCaptcha(PjsFile.TWITCH);
+
+        const sessionId: string = randomString(16).toString();
+        const requestId: string = randomString(32).toString();
 
         const response = await needle(
           "post",
@@ -246,6 +303,7 @@ export default class Salamoonder {
               "x-kpsdk-ct": solved["x-kpsdk-ct"],
               "x-kpsdk-v": "j-0.0.0",
             },
+            proxy: proxy ? "http://" + proxy : "",
           }
         );
 
@@ -269,6 +327,78 @@ export default class Salamoonder {
     });
   }
 
+  private generatePublicIntegrity(
+    proxy: string,
+    accessToken: string,
+    deviceId: string,
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+  ) {
+    return new Promise<TwitchIntegrity>(async (resolve, reject) => {
+      try {
+        const task: Task = {
+          type: TaskType.TWITCH_PUBLICINTEGRITY,
+          proxy: proxy,
+          access_token: accessToken,
+          deviceId,
+          clientId,
+        };
+
+        const response = await this.getSolution(task);
+
+        response.type = TaskType.TWITCH_PUBLICINTEGRITY;
+        if (response.type != TaskType.TWITCH_PUBLICINTEGRITY) {
+          return reject("Wrong solution type");
+        }
+
+        const integrity: TwitchIntegrity = {
+          clientId: response["client-id"],
+          token: response["integrity_token"],
+          userAgent: response["user-agent"],
+          deviceId: deviceId,
+        };
+
+        resolve(integrity);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  private generateLocalIntegrity(
+    proxy: string,
+    deviceId: string,
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+  ) {
+    return new Promise<TwitchIntegrity>(async (resolve, reject) => {
+      try {
+        const task: Task = {
+          type: TaskType.TWITCH_LOCALINTEGRITY,
+          proxy: proxy,
+          deviceId,
+          clientId,
+        };
+
+        const response = await this.getSolution(task);
+
+        response.type = TaskType.TWITCH_LOCALINTEGRITY;
+        if (response.type != TaskType.TWITCH_LOCALINTEGRITY) {
+          return reject("Wrong solution type");
+        }
+
+        const integrity: TwitchIntegrity = {
+          clientId: response["client-id"],
+          token: response["integrity_token"],
+          userAgent: response["user-agent"],
+          deviceId: deviceId,
+        };
+
+        resolve(integrity);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   public registerTwitchAccount(
     email: string
   ): Promise<TwitchRegisterAccountSolution> {
@@ -281,9 +411,9 @@ export default class Salamoonder {
 
         const result = await this.getSolution(task);
 
-        result.type = "Twitch_RegisterAccount";
+        result.type = TaskType.TWITCH_REGISTERACCOUNT;
 
-        if (result.type != "Twitch_RegisterAccount") {
+        if (result.type != TaskType.TWITCH_REGISTERACCOUNT) {
           return reject("Wrong solution type");
         }
 

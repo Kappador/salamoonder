@@ -27,7 +27,10 @@ export type Task = {
 
   // PublicIntegrity
   access_token?: string;
-  proxy?: string; // LocalIntegrity
+  // LocalIntegrity & PublicIntegrity
+  deviceId?: string;
+  clientId?: string;
+  proxy?: string;
 
   // RegisterAccount
   email?: string;
@@ -81,6 +84,7 @@ export type TwitchPublicIntegritySolution = {
   integrity_token: string;
   proxy: string;
   "user-agent": string;
+  "client-id": string;
 };
 
 export type TwitchLocalIntegritySolution = {
@@ -89,6 +93,7 @@ export type TwitchLocalIntegritySolution = {
   integrity_token: string;
   proxy: string;
   "user-agent": string;
+  "client-id": string;
 };
 
 export type TwitchRegisterAccountSolution = {
@@ -120,10 +125,38 @@ export type GetTaskResponse = {
 };
 
 export type TwitchIntegrity = {
-    clientId: string;
-    token: string;
-    sessionId: string;
-    userAgent: string;
-    deviceId: string;
-  };
-  
+  clientId: string;
+  token: string;
+  sessionId?: string;
+  userAgent: string;
+  deviceId: string;
+};
+
+export enum IntegrityGenerateType {
+  API_PUBLIC = "api_public",
+  API_LOCAL = "api_local",
+  SELF = "self",
+}
+
+export type IntegrityPublic = {
+  type?: "api_public";
+  proxy: string;
+  access_token: string;
+  deviceId?: string;
+  clientId?: string;
+};
+
+export type IntegrityLocal = {
+  type?: "api_local";
+  proxy: string;
+  deviceId?: string;
+  clientId?: string;
+};
+
+export type IntegritySelf = {
+  type?: "self";
+  proxy?: string;
+  access_token?: string;
+  deviceId?: string;
+  clientId?: string;
+};
