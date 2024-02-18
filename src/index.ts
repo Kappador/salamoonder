@@ -230,7 +230,8 @@ export default class Salamoonder {
 
   public generateIntegrity(
     type: IntegrityGenerateType,
-    data: IntegrityPublic | IntegrityLocal | IntegritySelf
+    data: IntegrityPublic | IntegrityLocal | IntegritySelf,
+    retries: number = 10
   ): Promise<TwitchIntegrity> {
     if (data.proxy && !this.checkProxy(data.proxy)) {
       return Promise.reject("Invalid proxy | Use user:pass@ip:port");
@@ -243,14 +244,16 @@ export default class Salamoonder {
           pub.proxy,
           pub.access_token,
           pub.deviceId ?? randomString(16).toString(),
-          pub.clientId
+          pub.clientId,
+          retries
         );
       case IntegrityGenerateType.API_LOCAL:
         let loc = data as IntegrityLocal;
         return this.generateLocalIntegrity(
           loc.proxy,
           loc.deviceId ?? randomString(16).toString(),
-          loc.clientId
+          loc.clientId,
+          retries
         );
       case IntegrityGenerateType.SELF:
         let self = data as IntegritySelf;
@@ -258,7 +261,8 @@ export default class Salamoonder {
           self.proxy,
           self.access_token,
           self.deviceId,
-          self.clientId
+          self.clientId,
+          retries
         );
     }
   }
@@ -267,11 +271,12 @@ export default class Salamoonder {
     proxy: string = "",
     oauth: string = "",
     deviceId: string = randomString(32).toString(),
-    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    retries: number = 10
   ): Promise<TwitchIntegrity> {
     return new Promise(async (resolve, reject) => {
       try {
-        const solved = await this.solveCaptcha(PjsFile.TWITCH);
+        const solved = await this.solveCaptcha(PjsFile.TWITCH, undefined, retries);
 
         const sessionId: string = randomString(16).toString();
         const requestId: string = randomString(32).toString();
