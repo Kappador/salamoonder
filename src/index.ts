@@ -83,26 +83,29 @@ export default class Salamoonder {
     });
   }
 
-  private getTaskResultFinal(taskId: string): Promise<GetTaskResponse> {
+  private getTaskResultFinal(
+    taskId: string,
+    retries: number
+  ): Promise<GetTaskResponse> {
     return new Promise<GetTaskResponse>(async (resolve, reject) => {
-      let retries = 0;
+      let nowRetries = 0;
 
       let response = await this.getTaskResult(taskId);
       while (response.status != "ready") {
-        if (retries > 5) {
+        if (nowRetries > retries) {
           return reject("Too many retries");
         }
 
         await wait(1000);
         response = await this.getTaskResult(taskId);
 
-        retries++;
+        nowRetries++;
       }
       resolve(response);
     });
   }
 
-  private getSolution(task: Task): Promise<Solution> {
+  private getSolution(task: Task, retries: number = 10): Promise<Solution> {
     return new Promise<Solution>(async (resolve, reject) => {
       const response = await this.createTask(task);
 
@@ -110,7 +113,7 @@ export default class Salamoonder {
         return reject(response.error_description);
       }
 
-      const result = await this.getTaskResultFinal(response.taskId);
+      const result = await this.getTaskResultFinal(response.taskId, 15);
 
       if (result.errorId != 0) {
         return reject(result.solution);
@@ -144,7 +147,8 @@ export default class Salamoonder {
 
   public solveCaptcha(
     pjs: PjsFile,
-    url?: string
+    url?: string,
+    retries: number = 10
   ): Promise<KasadaCaptchaSolverSolution> {
     return new Promise<KasadaCaptchaSolverSolution>(async (resolve, reject) => {
       let file = pjs.toString();
@@ -157,7 +161,7 @@ export default class Salamoonder {
         pjs: file,
       };
 
-      const response = await this.getSolution(task);
+      const response = await this.getSolution(task, retries);
 
       response.type = TaskType.KASADA_CAPTCHA_SOLVER;
       if (response.type != TaskType.KASADA_CAPTCHA_SOLVER) {
@@ -168,7 +172,7 @@ export default class Salamoonder {
     });
   }
 
-  public scrapeTwitch(): Promise<TwitchScraperSolution> {
+  public scrapeTwitch(retries: number = 10): Promise<TwitchScraperSolution> {
     return new Promise<TwitchScraperSolution>(async (resolve, reject) => {
       const task: Task = {
         type: TaskType.TWITCH_SCRAPER,
@@ -180,7 +184,7 @@ export default class Salamoonder {
         return reject(response.error_description);
       }
 
-      const result = await this.getTaskResultFinal(response.taskId);
+      const result = await this.getTaskResultFinal(response.taskId, retries);
 
       if (result.errorId != 0) {
         return reject(result.solution);
@@ -201,7 +205,8 @@ export default class Salamoonder {
   }
 
   public checkTwitchIntegrity(
-    token: string
+    token: string,
+    retries: number = 10
   ): Promise<TwitchCheckIntegritySolution> {
     return new Promise<TwitchCheckIntegritySolution>(
       async (resolve, reject) => {
@@ -210,7 +215,7 @@ export default class Salamoonder {
           token,
         };
 
-        const result = await this.getSolution(task);
+        const result = await this.getSolution(task, retries);
 
         result.type = TaskType.TWITCH_CHECKINTEGRITY;
 
@@ -331,7 +336,8 @@ export default class Salamoonder {
     proxy: string,
     accessToken: string,
     deviceId: string,
-    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    retries: number = 10
   ) {
     return new Promise<TwitchIntegrity>(async (resolve, reject) => {
       try {
@@ -343,7 +349,7 @@ export default class Salamoonder {
           clientId,
         };
 
-        const response = await this.getSolution(task);
+        const response = await this.getSolution(task, retries);
 
         response.type = TaskType.TWITCH_PUBLICINTEGRITY;
         if (response.type != TaskType.TWITCH_PUBLICINTEGRITY) {
@@ -367,7 +373,8 @@ export default class Salamoonder {
   private generateLocalIntegrity(
     proxy: string,
     deviceId: string,
-    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko"
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    retries: number = 10
   ) {
     return new Promise<TwitchIntegrity>(async (resolve, reject) => {
       try {
@@ -378,7 +385,7 @@ export default class Salamoonder {
           clientId,
         };
 
-        const response = await this.getSolution(task);
+        const response = await this.getSolution(task, retries);
 
         response.type = TaskType.TWITCH_LOCALINTEGRITY;
         if (response.type != TaskType.TWITCH_LOCALINTEGRITY) {
@@ -400,7 +407,8 @@ export default class Salamoonder {
   }
 
   public registerTwitchAccount(
-    email: string
+    email: string,
+    retries: number = 10
   ): Promise<TwitchRegisterAccountSolution> {
     return new Promise<TwitchRegisterAccountSolution>(
       async (resolve, reject) => {
@@ -409,7 +417,7 @@ export default class Salamoonder {
           email,
         };
 
-        const result = await this.getSolution(task);
+        const result = await this.getSolution(task, retries);
 
         result.type = TaskType.TWITCH_REGISTERACCOUNT;
 
