@@ -189,6 +189,10 @@ Generation via Salamoonder, no token
 
 Generation locally, optionally token & proxy
 
+##### Passport
+
+Generate Passport Integrity Tokens, optionally proxy
+
 #### Parameters
 
 - type: Generation Method
