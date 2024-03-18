@@ -27,6 +27,7 @@ export type Task = {
 
   // PublicIntegrity
   access_token?: string;
+
   // LocalIntegrity & PublicIntegrity
   deviceId?: string;
   clientId?: string;
@@ -96,6 +97,15 @@ export type TwitchLocalIntegritySolution = {
   "client-id": string;
 };
 
+export type TwitchPassportIntegritySolution = {
+  type: "Twitch_LocalIntegrity";
+  device_id: string;
+  integrity_token: string;
+  proxy: string;
+  "user-agent": string;
+  "client-id": string;
+};
+
 export type TwitchRegisterAccountSolution = {
   type: "Twitch_RegisterAccount";
   access_token: string;
@@ -136,6 +146,7 @@ export enum IntegrityGenerateType {
   API_PUBLIC = "api_public",
   API_LOCAL = "api_local",
   SELF = "self",
+  PASSPORT = "passport",
 }
 
 export type IntegrityPublic = {
@@ -155,6 +166,14 @@ export type IntegrityLocal = {
 
 export type IntegritySelf = {
   type?: "self";
+  proxy?: string;
+  access_token?: string;
+  deviceId?: string;
+  clientId?: string;
+};
+
+export type IntegrityPassport = {
+  type?: "passport";
   proxy?: string;
   access_token?: string;
   deviceId?: string;

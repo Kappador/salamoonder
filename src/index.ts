@@ -17,12 +17,14 @@ import {
   IntegrityLocal,
   IntegrityPublic,
   IntegritySelf,
+  IntegrityPassport,
 } from "./types";
 
 export default class Salamoonder {
   private apiKey: string;
   private salamoonderUrl: string = "https://salamoonder.com/api";
   private twitchUrl: string = "https://gql.twitch.tv";
+  private passportUrl: string = "https://passport.twitch.tv";
   private support: boolean = false;
   private appId: string = "appsr-kappador-c209-deda-055d-49b7a498";
 
@@ -230,7 +232,7 @@ export default class Salamoonder {
 
   public generateIntegrity(
     type: IntegrityGenerateType,
-    data: IntegrityPublic | IntegrityLocal | IntegritySelf,
+    data: IntegrityPublic | IntegrityLocal | IntegritySelf | IntegrityPassport,
     retries: number = 10
   ): Promise<TwitchIntegrity> {
     if (data.proxy && !this.checkProxy(data.proxy)) {
@@ -264,6 +266,14 @@ export default class Salamoonder {
           self.clientId,
           retries
         );
+      case IntegrityGenerateType.PASSPORT:
+        let pp = data as IntegrityPassport  ;
+        return this.generatePasssportIntegrity(
+          pp.proxy,
+          pp.deviceId,
+          pp.clientId,
+          retries
+        );
     }
   }
 
@@ -276,7 +286,11 @@ export default class Salamoonder {
   ): Promise<TwitchIntegrity> {
     return new Promise(async (resolve, reject) => {
       try {
-        const solved = await this.solveCaptcha(PjsFile.TWITCH, undefined, retries);
+        const solved = await this.solveCaptcha(
+          PjsFile.TWITCH,
+          undefined,
+          retries
+        );
 
         const sessionId: string = randomString(16).toString();
         const requestId: string = randomString(32).toString();
@@ -328,6 +342,78 @@ export default class Salamoonder {
           userAgent: solved["user-agent"],
           deviceId: deviceId,
           oauth: oauth,
+        };
+
+        resolve(integrity);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }  
+  
+  private generatePasssportIntegrity(
+    proxy: string = "",
+    deviceId: string = randomString(32).toString(),
+    clientId: string = "kimne78kx3ncx6brgo4mv6wki5h1ko",
+    retries: number = 10
+  ): Promise<TwitchIntegrity> {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const solved = await this.solveCaptcha(
+          PjsFile.TWITCH,
+          undefined,
+          retries
+        );
+
+        const sessionId: string = randomString(16).toString();
+        const requestId: string = randomString(32).toString();
+
+        const response = await needle(
+          "post",
+          `${this.passportUrl}/integrity`,
+          {},
+          {
+            json: true,
+            headers: {
+              Accept: "*/*",
+              "Accept-Encoding": "gzip, deflate, br",
+              "Accept-Language": "en-US,en;q=0.9",
+              "Cache-Control": "no-cache",
+              "Client-Id": clientId,
+              "Client-Request-Id": requestId,
+              "Client-Session-Id": sessionId,
+              Origin: "https://www.twitch.tv",
+              Pragma: "no-cache",
+              Referer: "https://www.twitch.tv/",
+              "Sec-Fetch-Dest": "empty",
+              "Sec-Fetch-Mode": "cors",
+              "Sec-Fetch-Site": "same-site",
+              "Sec-GPC": "1",
+              "User-Agent": solved["user-agent"],
+              "X-Auth-Action": "register",
+              "X-Device-Id": deviceId,
+              "sec-ch-ua":
+                '"Not/A)Brand";v="99", "Brave";v="115", "Chromium";v="115"',
+              "sec-ch-ua-mobile": "?0",
+              "sec-ch-ua-platform": '"Windows"',
+              "x-kpsdk-cd": solved["x-kpsdk-cd"],
+              "x-kpsdk-ct": solved["x-kpsdk-ct"],
+              "x-kpsdk-v": "j-0.0.0",
+            },
+            proxy: proxy ? "http://" + proxy : "",
+          }
+        );
+
+        if (response instanceof Error) {
+          return reject(response);
+        }
+
+        const integrity = {
+          clientId: clientId,
+          token: response.body.token,
+          sessionId: sessionId,
+          userAgent: solved["user-agent"],
+          deviceId: deviceId,
         };
 
         resolve(integrity);
