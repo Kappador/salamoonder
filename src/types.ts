@@ -108,7 +108,9 @@ export type TwitchPassportIntegritySolution = {
 
 export type TwitchRegisterAccountSolution = {
   type: "Twitch_RegisterAccount";
-  access_token: string;
+  access_token: string; // kimne78kx3ncx6brgo4mv6wki5h1ko
+  access_token_mobile_id: string; // r8s4dac0uhzifbpu9sjdiwzctle17ff
+  email: string;
   password: string;
   username: string;
 };
