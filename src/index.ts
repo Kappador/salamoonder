@@ -110,9 +110,9 @@ export default class Salamoonder {
   private getSolution(task: Task, retries: number = 10): Promise<Solution> {
     return new Promise<Solution>(async (resolve, reject) => {
       const response = await this.createTask(task);
-
+      
       if (response.error_code !== 0) {
-        return reject(response.error_description);
+        return reject(response);
       }
 
       const result = await this.getTaskResultFinal(response.taskId, 15);
@@ -267,7 +267,7 @@ export default class Salamoonder {
           retries
         );
       case IntegrityGenerateType.PASSPORT:
-        let pp = data as IntegrityPassport  ;
+        let pp = data as IntegrityPassport;
         return this.generatePasssportIntegrity(
           pp.proxy,
           pp.deviceId,
@@ -349,8 +349,8 @@ export default class Salamoonder {
         reject(error);
       }
     });
-  }  
-  
+  }
+
   private generatePasssportIntegrity(
     proxy: string = "",
     deviceId: string = randomString(32).toString(),
@@ -508,15 +508,19 @@ export default class Salamoonder {
           email,
         };
 
-        const result = await this.getSolution(task, retries);
+        try {
+          const result = await this.getSolution(task, retries);
 
-        result.type = TaskType.TWITCH_REGISTERACCOUNT;
+          result.type = TaskType.TWITCH_REGISTERACCOUNT;
 
-        if (result.type != TaskType.TWITCH_REGISTERACCOUNT) {
-          return reject("Wrong solution type");
+          if (result.type != TaskType.TWITCH_REGISTERACCOUNT) {
+            return reject("Wrong solution type");
+          }
+
+          resolve(result);
+        } catch (error) {
+          reject(error);
         }
-
-        resolve(result);
       }
     );
   }

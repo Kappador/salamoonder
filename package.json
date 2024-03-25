@@ -1,6 +1,6 @@
 {
   "name": "salamoonder",
-  "version": "2.5.7",
+  "version": "2.5.8",
   "description": "API Wrapper for salamoonder.com",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
