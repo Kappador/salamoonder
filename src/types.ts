@@ -98,7 +98,7 @@ export type TwitchLocalIntegritySolution = {
 };
 
 export type TwitchPassportIntegritySolution = {
-  type: "Twitch_LocalIntegrity";
+  type: "Twitch_PassportIntegrity";
   device_id: string;
   integrity_token: string;
   proxy: string;

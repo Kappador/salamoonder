@@ -1,5 +1,5 @@
 import needle from "needle";
-import { randomString, wait } from "kappa-helper";
+import { randomize, randomString, wait } from "kappa-helper";
 import {
   CreateTaskResponse,
   GetTaskResponse,
@@ -292,9 +292,9 @@ export default class Salamoonder {
           retries
         );
 
-        const sessionId: string = randomString(16).toString();
-        const requestId: string = randomString(32).toString();
-
+        const sessionId: string = randomize("a6e7b41625ab5f6a").toString();
+        const requestId: string = randomize("R5oVs38ggrEQXHSNP2zzuxpSE19WBMU0").toString();
+          console.log(solved)
         const response = await needle(
           "post",
           `${this.twitchUrl}/integrity`,
@@ -310,8 +310,10 @@ export default class Salamoonder {
               "Client-Id": clientId,
               "Client-Request-Id": requestId,
               "Client-Session-Id": sessionId,
+              "Client-Version": "31387f87-3f32-4602-af27-6ea65a7a7f16",
               Origin: "https://www.twitch.tv",
               Pragma: "no-cache",
+              Cookie: `KP_UIDz=${solved["x-kpsdk-ct"]}; KP_UIDz-ssn=${solved["x-kpsdk-ct"]};`,
               Referer: "https://www.twitch.tv/",
               "Sec-Fetch-Dest": "empty",
               "Sec-Fetch-Mode": "cors",
