@@ -41,13 +41,10 @@ export default class Salamoonder {
           task: Task;
           app_id?: string;
         } = {
+          app_id: this.appId,
           api_key: this.apiKey,
           task,
         };
-
-        if (this.support) {
-          body["app_id"] = this.appId;
-        }
 
         const response = await needle(
           "post",
@@ -150,6 +147,7 @@ export default class Salamoonder {
   public solveCaptcha(
     pjs: PjsFile,
     url?: string,
+    cdOnly: boolean = false,
     retries: number = 10
   ): Promise<KasadaCaptchaSolverSolution> {
     return new Promise<KasadaCaptchaSolverSolution>(async (resolve, reject) => {
@@ -161,6 +159,7 @@ export default class Salamoonder {
       const task: Task = {
         type: TaskType.KASADA_CAPTCHA_SOLVER,
         pjs: file,
+        cdOnly: cdOnly,
       };
 
       const response = await this.getSolution(task, retries);
@@ -289,6 +288,7 @@ export default class Salamoonder {
         const solved = await this.solveCaptcha(
           PjsFile.TWITCH,
           undefined,
+          false,
           retries
         );
 
@@ -364,6 +364,7 @@ export default class Salamoonder {
         const solved = await this.solveCaptcha(
           PjsFile.TWITCH,
           undefined,
+          false,
           retries
         );
 

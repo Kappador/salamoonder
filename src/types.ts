@@ -21,6 +21,7 @@ export type Task = {
 
   // KasadaCaptchaSolver
   pjs?: string;
+  cdOnly?: boolean;
 
   // CheckIntegrity
   token?: string;
