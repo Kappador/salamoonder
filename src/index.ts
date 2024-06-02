@@ -107,7 +107,7 @@ export default class Salamoonder {
   private getSolution(task: Task, retries: number = 10): Promise<Solution> {
     return new Promise<Solution>(async (resolve, reject) => {
       const response = await this.createTask(task);
-      
+
       if (response.error_code !== 0) {
         return reject(response);
       }
@@ -146,7 +146,7 @@ export default class Salamoonder {
 
   public solveCaptcha(
     pjs: PjsFile,
-    url?: string,
+    url: string | null = null,
     cdOnly: boolean = false,
     retries: number = 10
   ): Promise<KasadaCaptchaSolverSolution> {
@@ -161,9 +161,7 @@ export default class Salamoonder {
         pjs: file,
         cdOnly: cdOnly,
       };
-
       const response = await this.getSolution(task, retries);
-
       response.type = TaskType.KASADA_CAPTCHA_SOLVER;
       if (response.type != TaskType.KASADA_CAPTCHA_SOLVER) {
         return reject("Wrong solution type");
@@ -294,7 +292,6 @@ export default class Salamoonder {
 
         const sessionId: string = randomize("a6e7b41625ab5f6a").toString();
         const requestId: string = randomize("R5oVs38ggrEQXHSNP2zzuxpSE19WBMU0").toString();
-          console.log(solved)
         const response = await needle(
           "post",
           `${this.twitchUrl}/integrity`,

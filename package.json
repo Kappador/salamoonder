@@ -1,6 +1,6 @@
 {
   "name": "salamoonder",
-  "version": "2.5.10",
+  "version": "2.6.0",
   "description": "API Wrapper for salamoonder.com",
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
@@ -18,7 +18,7 @@
   "dependencies": {
     "kappa-helper": "^1.0.1",
     "needle": "^3.2.0",
-    "tls-client": "^0.0.5"
+    "typescript": "^5.4.5"
   },
   "devDependencies": {
     "@types/needle": "^3.2.0"
