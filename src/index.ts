@@ -75,6 +75,7 @@ export default class Salamoonder {
             json: true,
           }
         );
+        
         resolve(response.body);
       } catch (error) {
         reject(error);
@@ -367,7 +368,7 @@ export default class Salamoonder {
 
         const sessionId: string = randomString(16).toString();
         const requestId: string = randomString(32).toString();
-
+        
         const response = await needle(
           "post",
           `${this.passportUrl}/integrity`,
